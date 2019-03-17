@@ -83,7 +83,7 @@ typedef struct thpool_{
 	volatile int num_threads_working;    /* threads currently working */
 	pthread_mutex_t  thcount_lock;       /* used for thread count etc */
 	pthread_cond_t  threads_all_idle;    /* signal to thpool_wait     */
-	jobqueue  jobqueue;                  /* job queue                 */
+	struct jobqueue  jobqueue;                  /* job queue                 */
 } thpool_;
 
 
@@ -94,7 +94,13 @@ typedef struct thpool_{
 
 
 static int  thread_init(thpool_* thpool_p, struct thread** thread_p, int id);
+
+
+#ifdef __cplusplus
+static void* thread_do(void*);
+#else 
 static void* thread_do(struct thread* thread_p);
+#endif 
 static void  thread_hold(int sig_id);
 static void  thread_destroy(struct thread* thread_p);
 
@@ -289,9 +295,12 @@ static int thread_init (thpool_* thpool_p, struct thread** thread_p, int id){
 
 	(*thread_p)->thpool_p = thpool_p;
 	(*thread_p)->id       = id;
-
-	pthread_create(&(*thread_p)->pthread, NULL, (void *)thread_do, (*thread_p));
-	pthread_detach((*thread_p)->pthread);
+#ifdef __cplusplus 
+	pthread_create(&(*thread_p)->pthread, NULL,thread_do, (*thread_p));
+#else 
+  pthread_create(&(*thread_p)->pthread, NULL, (void *)thread_do, (*thread_p));
+#endif 
+  pthread_detach((*thread_p)->pthread);
 	return 0;
 }
 
@@ -314,8 +323,12 @@ static void thread_hold(int sig_id) {
 * @param  thread        thread that will run this function
 * @return nothing
 */
+#ifdef __cplusplus 
+static void* thread_do(void* thread_p_){
+  struct thread* thread_p = static_cast<struct thread*>(thread_p_);
+#else 
 static void* thread_do(struct thread* thread_p){
-
+#endif 
 	/* Set thread name for profiling and debuging */
 	char thread_name[128] = {0};
 	sprintf(thread_name, "thread-pool-%d", thread_p->id);
